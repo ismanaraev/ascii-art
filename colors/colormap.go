@@ -13,4 +13,5 @@ var Colormap = map[string][]int{
 	"orange": []int{255, 165, 0},
 	"pink":   []int{255, 192, 203},
 	"green":  []int{0, 128, 0},
+	"teal":   []int{0, 128, 128},
 }

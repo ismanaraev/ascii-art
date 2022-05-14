@@ -2,7 +2,7 @@ package main
 
 import (
 	args "ascii-art/args"
-	chars "ascii-art/chars"
+	"ascii-art/chars"
 	"fmt"
 	"os"
 	"strings"
@@ -26,7 +26,8 @@ func main() {
 	if input == "" {
 		return
 	}
-	charmap := chars.CreateCharMap("standard.txt")
+	charstring := chars.ReadCharFile("standard.txt")
+	charmap := chars.CreateCharMap(charstring)
 	if !chars.CheckString(input, charmap) {
 		fmt.Println("invalid Chars")
 		return

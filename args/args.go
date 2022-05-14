@@ -148,7 +148,7 @@ func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index) bool 
 			color = colorword.FindStringSubmatch(arg)
 			numbers, ok := colors.Colormap[color[1]]
 			if !ok {
-				fmt.Println("Invalid colors. Available colors are: red, green, blue, black, white, cyan, gray, purple, orange, pink, yellow, lime ")
+				fmt.Println("Invalid colors. Available colors are: red, green, blue, black, white, cyan, gray, purple, orange, pink, yellow, lime, teal ")
 				return false
 			}
 			SetTarget(args[i:], numbers, regmap, Indexlist)
@@ -173,6 +173,5 @@ func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index) bool 
 	if !ValidateIndexList(*Indexlist) {
 		return false
 	}
-	fmt.Println(len(regmap), len(*Indexlist))
 	return good
 }
