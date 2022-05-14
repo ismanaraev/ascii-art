@@ -99,8 +99,13 @@ func SetIndex(s string, rgb []int) []Index {
 func SetTarget(args []string, color []int, regmap map[string][]int, Indexlist *[]Index) {
 	var target string
 	if len(args) > 1 {
+	rangege:
 		if regdex.MatchString(args[1]) {
-			*Indexlist = SetIndex(args[1], color)
+			*Indexlist = append(*Indexlist, SetIndex(args[1], color)...)
+			if len(args) > 2 {
+				args = args[1:]
+				goto rangege
+			}
 			return
 		}
 		target = args[1]
@@ -143,6 +148,7 @@ func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index) bool 
 			color = colorword.FindStringSubmatch(arg)
 			numbers, ok := colors.Colormap[color[1]]
 			if !ok {
+				fmt.Println("Invalid colors. Available colors are: red, green, blue, black, white, cyan, gray, purple, orange, pink, yellow, lime ")
 				return false
 			}
 			SetTarget(args[i:], numbers, regmap, Indexlist)

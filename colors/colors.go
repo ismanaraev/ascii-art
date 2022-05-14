@@ -6,12 +6,6 @@ import (
 	"strconv"
 )
 
-var Colormap = map[string][]int{
-	"red":   []int{255, 0, 0},
-	"green": []int{0, 255, 0},
-	"blue":  []int{0, 0, 255},
-}
-
 func HextoRGB(s string) []int {
 	var res []int
 	for i := 0; i < 5; i = i + 2 {
