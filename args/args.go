@@ -136,6 +136,25 @@ func GetNumbers(nums []string) []int {
 	return numbers
 }
 
+func CheckNumbers(nums []int, mode string) bool {
+	var checkval int
+	if mode == "rgb" {
+		checkval = 255
+	}
+	if mode == "hsl" {
+		if nums[0] > 360 {
+			return false
+		}
+		nums = nums[1:]
+	}
+	for _, item := range nums {
+		if item > checkval || item < 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index) bool {
 	var color []string
 	var nums []string
@@ -148,19 +167,25 @@ func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index) bool 
 			color = colorword.FindStringSubmatch(arg)
 			numbers, ok := colors.Colormap[color[1]]
 			if !ok {
-				fmt.Println("Invalid colors. Available colors are: red, green, blue, black, white, cyan, gray, purple, orange, pink, yellow, lime, teal ")
-				return false
+				fmt.Println("Invalid color. Available colors are: red, green, blue, black, white, cyan, gray, purple, orange, pink, yellow, lime, teal ")
+				os.Exit(0)
 			}
 			SetTarget(args[i:], numbers, regmap, Indexlist)
 		case colornum.MatchString(arg):
 			good = true
 			nums = colornum.FindStringSubmatch(arg)
 			numbers = GetNumbers(nums)
+			if !CheckNumbers(numbers, "rgb") {
+				return false
+			}
 			SetTarget(args[i:], numbers, regmap, Indexlist)
 		case colorhsl.MatchString(arg):
 			good = true
 			nums = colorhsl.FindStringSubmatch(arg)
 			numbers = GetNumbers(nums)
+			if !CheckNumbers(numbers, "hsl") {
+				return false
+			}
 			numbers[0], numbers[1], numbers[2] = colors.HslToRGB(numbers[0], numbers[1], numbers[2])
 			SetTarget(args[i:], numbers, regmap, Indexlist)
 		case colorhex.MatchString(arg):
