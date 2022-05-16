@@ -80,18 +80,17 @@ func PrintLine(item string, charmap map[string][]string, regmap map[string][]int
 				fmt.Print(colors.GetANSIColor(dexcol[0], dexcol[1], dexcol[2]) + charmap[string(letter)][i])
 			} else if col, ok := regmap[""]; ok {
 				if len(regmap) != 1 {
-					fmt.Println("Invalid arguments; Usage: [string] --color=([color]) to print whole string or [string] --color=([color]) substring to paint substring")
-					return
+					args.Help()
 				}
 				fmt.Print(colors.GetANSIColor(col[0], col[1], col[2]) + charmap[string(letter)][i])
 			} else if col, ok := regmap[string(letter)]; ok {
 				fmt.Print(colors.GetANSIColor(col[0], col[1], col[2]) + charmap[string(letter)][i])
 			} else {
-				fmt.Print("\033[38;2;255;255;255m" + charmap[string(letter)][i])
+				fmt.Print("\033[0m" + charmap[string(letter)][i])
 			}
 			n++
 		}
 		n = n - len(item)
-		fmt.Print("\n")
+		fmt.Print("\033[0m\n")
 	}
 }

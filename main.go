@@ -13,14 +13,12 @@ func main() {
 	var n int
 	var Indexlist []args.Index
 	if len(os.Args) < 2 {
+		args.Help()
 		return
 	}
 	input := os.Args[1]
 	if len(os.Args) > 2 {
-		if !args.CheckArgs(os.Args[2:], regmap, &Indexlist) {
-			fmt.Println("Invalid arguments")
-			return
-		}
+		args.CheckArgs(os.Args[2:], regmap, &Indexlist)
 	}
 	input = strings.ReplaceAll(input, "\\n", "\n")
 	if input == "" {

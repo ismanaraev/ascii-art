@@ -1,6 +1,7 @@
 package colors
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"strconv"
@@ -48,5 +49,12 @@ func HslToRGB(H, S, L int) (int, int, int) {
 }
 
 func GetANSIColor(r, g, b int) string {
+	if r == 500 {
+		return "\033[8m"
+	}
+	if r == 501 {
+		return "\033[5m"
+	}
+	fmt.Print("\033[0m")
 	return "\033[38;2;" + strconv.Itoa(r) + ";" + strconv.Itoa(g) + ";" + strconv.Itoa(b) + "m"
 }

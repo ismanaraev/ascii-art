@@ -12,7 +12,7 @@ import (
 
 var colorword = regexp.MustCompile(`^--color=([A-Za-z]+)$`)
 var colornum = regexp.MustCompile(`^--color=rgb\((\d{1,3})[,;] {0,1}(\d{1,3})[,;] {0,1}(\d{1,3})\)$`)
-var colorhsl = regexp.MustCompile(`^--color=hsl\((\d{1,3})°{0,1} {0,1}(\d{1,3})%{0,1} {0,1}(\d{1,3})%{0,1}\)$`)
+var colorhsl = regexp.MustCompile(`^--color=hsl\((\d{1,3})°{0,1},{0,1} {0,1}(\d{1,3})%{0,1},{0,1} {0,1}(\d{1,3})%{0,1}\)$`)
 var colorhex = regexp.MustCompile(`^--color=#([0-9a-fA-F]{6})$`)
 var regdex = regexp.MustCompile(`^\[(\d*?)(:){0,1}(\d*?)\]$`)
 var n int
@@ -40,6 +40,13 @@ func (I Index) Match(s int) bool {
 	return false
 }
 
+func Help() {
+	fmt.Print(`Usage: go run . [STRING] [OPTION]
+
+EX: go run . something --color=<color>
+`)
+	os.Exit(0)
+}
 func ValidateIndexList(dexes []Index) bool {
 	for _, item := range dexes {
 		if !item.Validate() {
@@ -96,32 +103,24 @@ func SetIndex(s string, rgb []int) []Index {
 	return Indexlist
 }
 
-func SetTarget(args []string, color []int, regmap map[string][]int, Indexlist *[]Index) {
-	var target string
-	if len(args) > 1 {
-	rangege:
-		if regdex.MatchString(args[1]) {
-			*Indexlist = append(*Indexlist, SetIndex(args[1], color)...)
-			if len(args) > 2 {
-				args = args[1:]
-				goto rangege
-			}
-			return
-		}
-		target = args[1]
-		if strings.HasPrefix(args[1], "--color") {
-			target = ""
-		}
-	} else {
-		target = ""
+func SetTarget(args []string, color []int, regmap map[string][]int, Indexlist *[]Index) int {
+	var ct int
+	if len(args) == 1 {
+		regmap[""] = color
+		return 0
 	}
-	if len(target) > 1 {
-		for _, item := range target {
-			regmap[string(item)] = color
-		}
-		return
+	if strings.HasPrefix(args[1], "--color=") {
+		return ct
 	}
-	regmap[target] = color
+	if regdex.MatchString(args[1]) {
+		*Indexlist = append(*Indexlist, SetIndex(args[1], color)...)
+		return ct + 1
+	}
+	for _, ch := range args[1] {
+		regmap[string(rune(ch))] = color
+	}
+	ct++
+	return ct
 }
 
 func GetNumbers(nums []string) []int {
@@ -146,6 +145,7 @@ func CheckNumbers(nums []int, mode string) bool {
 			return false
 		}
 		nums = nums[1:]
+		checkval = 100
 	}
 	for _, item := range nums {
 		if item > checkval || item < 0 {
@@ -155,48 +155,49 @@ func CheckNumbers(nums []int, mode string) bool {
 	return true
 }
 
-func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index) bool {
+func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index) {
 	var color []string
 	var nums []string
 	var numbers []int
-	var good bool
-	for i, arg := range args {
+	for i := 0; i < len(args); i++ {
 		switch {
-		case colorword.MatchString(arg):
-			good = true
-			color = colorword.FindStringSubmatch(arg)
-			numbers, ok := colors.Colormap[color[1]]
+		case colorword.MatchString(args[i]):
+			color = colorword.FindStringSubmatch(args[i])
+			colorname := strings.ToLower(color[1])
+			numbers, ok := colors.Colormap[colorname]
 			if !ok {
 				fmt.Println("Invalid color. Available colors are: red, green, blue, black, white, cyan, gray, purple, orange, pink, yellow, lime, teal ")
 				os.Exit(0)
 			}
-			SetTarget(args[i:], numbers, regmap, Indexlist)
-		case colornum.MatchString(arg):
-			good = true
-			nums = colornum.FindStringSubmatch(arg)
+			n := SetTarget(args[i:], numbers, regmap, Indexlist)
+			i += n
+		case colornum.MatchString(args[i]):
+			nums = colornum.FindStringSubmatch(args[i])
 			numbers = GetNumbers(nums)
 			if !CheckNumbers(numbers, "rgb") {
-				return false
+				Help()
 			}
-			SetTarget(args[i:], numbers, regmap, Indexlist)
-		case colorhsl.MatchString(arg):
-			good = true
-			nums = colorhsl.FindStringSubmatch(arg)
+			n := SetTarget(args[i:], numbers, regmap, Indexlist)
+			i += n
+		case colorhsl.MatchString(args[i]):
+			nums = colorhsl.FindStringSubmatch(args[i])
 			numbers = GetNumbers(nums)
 			if !CheckNumbers(numbers, "hsl") {
-				return false
+				Help()
 			}
 			numbers[0], numbers[1], numbers[2] = colors.HslToRGB(numbers[0], numbers[1], numbers[2])
-			SetTarget(args[i:], numbers, regmap, Indexlist)
-		case colorhex.MatchString(arg):
-			good = true
-			nums = colorhex.FindStringSubmatch(arg)
+			n := SetTarget(args[i:], numbers, regmap, Indexlist)
+			i += n
+		case colorhex.MatchString(args[i]):
+			nums = colorhex.FindStringSubmatch(args[i])
 			numbers = colors.HextoRGB(nums[1])
-			SetTarget(args[i:], numbers, regmap, Indexlist)
+			n := SetTarget(args[i:], numbers, regmap, Indexlist)
+			i += n
+		default:
+			Help()
 		}
 	}
 	if !ValidateIndexList(*Indexlist) {
-		return false
+		Help()
 	}
-	return good
 }
