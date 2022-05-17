@@ -166,7 +166,7 @@ func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index) {
 			colorname := strings.ToLower(color[1])
 			numbers, ok := colors.Colormap[colorname]
 			if !ok {
-				fmt.Println("Invalid color. Available colors are: red, green, blue, black, white, cyan, gray, purple, orange, pink, yellow, lime, teal ")
+				fmt.Println("Invalid color. Available colors are: red, green, blue, black, white, cyan, gray, purple, orange, pink, yellow, lime, teal, transparent, blink ")
 				os.Exit(0)
 			}
 			n := SetTarget(args[i:], numbers, regmap, Indexlist)
