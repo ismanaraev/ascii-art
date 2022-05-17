@@ -17,14 +17,15 @@ func main() {
 		return
 	}
 	input := os.Args[1]
+	var charfile string
 	if len(os.Args) > 2 {
-		args.CheckArgs(os.Args[2:], regmap, &Indexlist)
+		args.CheckArgs(os.Args[2:], regmap, &Indexlist, &charfile)
 	}
 	input = strings.ReplaceAll(input, "\\n", "\n")
 	if input == "" {
 		return
 	}
-	charstring := chars.ReadCharFile("standard.txt")
+	charstring := chars.ReadCharFile(charfile)
 	charmap := chars.CreateCharMap(charstring)
 	if !chars.CheckString(input, charmap) {
 		fmt.Println("invalid Chars")

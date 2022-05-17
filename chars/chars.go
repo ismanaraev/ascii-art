@@ -11,9 +11,22 @@ import (
 )
 
 var Standardhash = []byte{225, 148, 241, 3, 52, 66, 97, 122, 184, 167, 142, 28, 166, 58, 32, 97, 245, 204, 7, 163, 240, 90, 194, 38, 237, 50, 235, 157, 253, 34, 166, 191}
+var Shadowhash = []byte{38, 185, 77, 11, 19, 75, 119, 233, 253, 35, 224, 54, 11, 253, 129, 116, 15, 128, 251, 127, 101, 65, 209, 216, 197, 216, 94, 115, 238, 85, 15, 115}
+var Thinkertoyhash = []byte{243, 125, 219, 114, 118, 66, 122, 15, 188, 217, 227, 105, 214, 89, 103, 10, 252, 146, 207, 178, 243, 230, 71, 217, 19, 204, 220, 6, 169, 152, 222, 67}
 
 func ReadCharFile(file string) string {
-	chars, err := os.Open(file)
+	var checkhash []byte
+	switch file {
+	case "standard.txt":
+		checkhash = Standardhash
+	case "shadow.txt":
+		checkhash = Shadowhash
+	case "thinkertoy.txt":
+		checkhash = Thinkertoyhash
+	default:
+		args.Help()
+	}
+	chars, err := os.Open("ascii/" + file)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,13 +36,17 @@ func ReadCharFile(file string) string {
 	if err != nil {
 		log.Fatal(err)
 	}
+	res := string(data[:n])
 	hash := sha256.New()
 	hash.Write(data[:n])
-	if string(hash.Sum(nil)) != string(Standardhash) {
-		fmt.Println("standard.txt file is corrupted")
+	if string(hash.Sum(nil)) != string(checkhash) {
+		fmt.Println("file is corrupted")
 		os.Exit(0)
 	}
-	return string(data[:n])
+	if file == "thinkertoy.txt" {
+		res = strings.ReplaceAll(res, "\r", "")
+	}
+	return res
 }
 
 func CreateCharMap(allchars string) map[string][]string {

@@ -155,10 +155,22 @@ func CheckNumbers(nums []int, mode string) bool {
 	return true
 }
 
-func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index) {
+func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index, charfile *string) {
 	var color []string
 	var nums []string
 	var numbers []int
+	switch args[0] {
+	case "standard":
+		*charfile = "standard.txt"
+	case "shadow":
+		*charfile = "shadow.txt"
+	case "thinkertoy":
+		*charfile = "thinkertoy.txt"
+	default:
+		Help()
+
+	}
+	args = args[1:]
 	for i := 0; i < len(args); i++ {
 		switch {
 		case colorword.MatchString(args[i]):
