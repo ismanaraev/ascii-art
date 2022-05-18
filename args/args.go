@@ -10,106 +10,33 @@ import (
 	"strings"
 )
 
-var colorword = regexp.MustCompile(`^--color=([A-Za-z]+)$`)
-var colornum = regexp.MustCompile(`^--color=rgb\((\d{1,3})[,;] {0,1}(\d{1,3})[,;] {0,1}(\d{1,3})\)$`)
-var colorhsl = regexp.MustCompile(`^--color=hsl\((\d{1,3})°{0,1},{0,1} {0,1}(\d{1,3})%{0,1},{0,1} {0,1}(\d{1,3})%{0,1}\)$`)
-var colorhex = regexp.MustCompile(`^--color=#([0-9a-fA-F]{6})$`)
-var regdex = regexp.MustCompile(`^\[(\d*?)(:){0,1}(\d*?)\]$`)
-var n int
+var (
+	isarg        = regexp.MustCompile(`^--color=|^--output=`)
+	colorword    = regexp.MustCompile(`^--color=([A-Za-z]+)$`)
+	colornum     = regexp.MustCompile(`^--color=rgb\((\d{1,3})[,;] {0,1}(\d{1,3})[,;] {0,1}(\d{1,3})\)$`)
+	colorhsl     = regexp.MustCompile(`^--color=hsl\((\d{1,3})°{0,1},{0,1} {0,1}(\d{1,3})%{0,1},{0,1} {0,1}(\d{1,3})%{0,1}\)$`)
+	colorhex     = regexp.MustCompile(`^--color=#([0-9a-fA-F]{6})$`)
+	regdex       = regexp.MustCompile(`^\[(\d*?)(:){0,1}(\d*?)\]$`)
+	outfileregex = regexp.MustCompile(`^--output=(\w*?)$`)
+)
 
-type Index struct {
-	Start int
-	End   int
-	Color []int
-}
-
-func (I Index) Validate() bool {
-	if I.Start < 0 || I.Start > len(os.Args[1]) {
-		return false
-	}
-	if I.End < 0 || I.End > len(os.Args[1]) {
-		return false
-	}
-	return true
-}
-
-func (I Index) Match(s int) bool {
-	if I.Start <= s && I.End > s {
-		return true
-	}
-	return false
-}
-
+//display help, someday I will write better help string
 func Help() {
-	fmt.Print(`Usage: go run . [STRING] [OPTION]
+	fmt.Print(`Usage: go run . [STRING] [BANNER] [OPTION]
 
-EX: go run . something --color=<color>
+EX: go run . something standard --color=<color>
 `)
 	os.Exit(0)
 }
-func ValidateIndexList(dexes []Index) bool {
-	for _, item := range dexes {
-		if !item.Validate() {
-			return false
-		}
-	}
-	return true
-}
 
-func CheckIndex(dexes []Index, pos int) (Index, bool) {
-	for _, dex := range dexes {
-		if dex.Match(pos) {
-			return dex, true
-		}
-	}
-	return Index{Start: -1}, false
-}
-
-func SetIndex(s string, rgb []int) []Index {
-	var Indexlist []Index
-	l := regdex.FindStringSubmatch(s)
-	index := Index{}
-	var delim bool
-	if l[2] != "" {
-		delim = true
-	}
-	var err error
-	index.Start, err = strconv.Atoi(l[1])
-	if err != nil {
-		if l[1] == "" {
-			index.Start = 0
-		} else {
-			log.Fatal(err)
-		}
-	}
-	index.End, err = strconv.Atoi(l[3])
-	if err != nil {
-		if l[3] == "" {
-			index.End = len(os.Args[1])
-		} else {
-			log.Fatal(err)
-		}
-	}
-	if !delim {
-		index.Start = index.End
-		index.End++
-	}
-	var dexcol = make([]int, 3)
-	for i := 0; i < 3; i++ {
-		dexcol[i] = rgb[i]
-	}
-	index.Color = dexcol
-	Indexlist = append(Indexlist, index)
-	return Indexlist
-}
-
+//this function sets the string or index to color in case when string is given, returns the number of args read
 func SetTarget(args []string, color []int, regmap map[string][]int, Indexlist *[]Index) int {
 	var ct int
 	if len(args) == 1 {
 		regmap[""] = color
 		return 0
 	}
-	if strings.HasPrefix(args[1], "--color=") {
+	if isarg.MatchString(args[1]) {
 		return ct
 	}
 	if regdex.MatchString(args[1]) {
@@ -123,6 +50,7 @@ func SetTarget(args []string, color []int, regmap map[string][]int, Indexlist *[
 	return ct
 }
 
+//this function takes the submatch of colornum and colorhsl and gets the numbers in rgb(255, 0, 0) or hsl(100, 20, 50) etc...
 func GetNumbers(nums []string) []int {
 	var numbers []int
 	for _, item := range nums[1:] {
@@ -135,6 +63,7 @@ func GetNumbers(nums []string) []int {
 	return numbers
 }
 
+//rgb and hsl numbers validation
 func CheckNumbers(nums []int, mode string) bool {
 	var checkval int
 	if mode == "rgb" {
@@ -155,23 +84,13 @@ func CheckNumbers(nums []int, mode string) bool {
 	return true
 }
 
-func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index, charfile *string) {
+//This function iterates the argument list and forms Indexlist and regmap based on arguments entered
+func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index, outfile **os.File) {
 	var color []string
 	var nums []string
 	var numbers []int
-	switch args[0] {
-	case "standard":
-		*charfile = "standard.txt"
-	case "shadow":
-		*charfile = "shadow.txt"
-	case "thinkertoy":
-		*charfile = "thinkertoy.txt"
-	default:
-		Help()
-
-	}
-	args = args[1:]
 	for i := 0; i < len(args); i++ {
+		//this switch checks for args by regex, to add new type of arg, just enter new regex
 		switch {
 		case colorword.MatchString(args[i]):
 			color = colorword.FindStringSubmatch(args[i])
@@ -205,11 +124,27 @@ func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index, charf
 			numbers = colors.HextoRGB(nums[1])
 			n := SetTarget(args[i:], numbers, regmap, Indexlist)
 			i += n
+		case outfileregex.MatchString(args[i]):
+			output := outfileregex.FindStringSubmatch(args[i])
+			_, err := os.Create(output[1])
+			if err != nil {
+				log.Fatal(err)
+			}
+			*outfile, err = os.OpenFile(output[1], os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(args) > 1 {
+				Help()
+			}
+
 		default:
 			Help()
 		}
 	}
+	//check if index is valid, i.e. doesn't go out of range
 	if !ValidateIndexList(*Indexlist) {
-		Help()
+		fmt.Println("invalid index")
+		os.Exit(0)
 	}
 }
