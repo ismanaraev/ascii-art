@@ -4,7 +4,9 @@ import (
 	args "ascii-art/args"
 	"ascii-art/chars"
 	"fmt"
+	"log"
 	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -21,7 +23,15 @@ func main() {
 	if len(os.Args) > 3 {
 		args.CheckArgs(os.Args[3:], regmap, &Indexlist, &outfile)
 	}
-	input = strings.ReplaceAll(input, "\\n", "\n")
+	if outfile != nil {
+		os.Stdout = outfile
+	}
+	formatted_str, err := exec.Command("echo", "-e", input).Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	input = string(formatted_str)
+	input = input[:len(input)-1]
 	if input == "" {
 		return
 	}

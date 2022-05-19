@@ -134,9 +134,6 @@ func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index, outfi
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(args) > 1 {
-				Help()
-			}
 
 		default:
 			Help()
