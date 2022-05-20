@@ -92,7 +92,71 @@ func CheckString(input string, charmap map[string][]string) bool {
 	return true
 }
 
+func GetStrWidth(s string, charmap map[string][]string) int {
+	var ct int
+	for _, ch := range s {
+		ct += len(charmap[string(ch)][0])
+	}
+	return ct
+}
+
+func CountWords(s string) int {
+	f := strings.Split(s, " ")
+	return len(f)
+}
+func SetAlignment(align, item string, terminalwidth int, charmap map[string][]string) string {
+	fmt.Println("kurlyk")
+	n := GetStrWidth(item, charmap)
+	switch align {
+	case "left":
+		shift := terminalwidth - n
+		newchar := []string{}
+		for i := 0; i != 8; i++ {
+			newchar = append(newchar, strings.Repeat(" ", shift))
+		}
+		charmap["Л"] = newchar
+		item = item + "Л"
+	case "right":
+		shift := terminalwidth - n
+		var newchar []string
+		for i := 0; i != 8; i++ {
+			newchar = append(newchar, strings.Repeat(" ", shift))
+		}
+		charmap["Р"] = newchar
+		item = "Р" + item
+	case "center":
+		shift := terminalwidth - n
+		lshift := shift / 2
+		rshift := shift - lshift
+		var lchar []string
+		var rchar []string
+		for i := 0; i != 8; i++ {
+			lchar = append(lchar, strings.Repeat(" ", lshift))
+			rchar = append(rchar, strings.Repeat(" ", rshift))
+		}
+		charmap["Л"] = lchar
+		charmap["Р"] = rchar
+		item = "Л" + item + "Р"
+	case "justify":
+		freespace := terminalwidth - n
+		words := CountWords(item)
+		if words == 1 {
+			words = 2
+		}
+		sh := freespace / (words - 1)
+		sh += 6
+		var suchar []string
+		for i := 0; i != 8; i++ {
+			suchar = append(suchar, strings.Repeat(" ", sh))
+		}
+		charmap["Щ"] = suchar
+		item = strings.ReplaceAll(item, " ", "Щ")
+	}
+	return item
+}
+
 func PrintLine(item string, charmap map[string][]string, regmap map[string][]int, Indexlist []args.Index, n int) {
+	fmt.Println(item)
 	if item == "" {
 		fmt.Print("\n")
 		return
@@ -118,20 +182,5 @@ func PrintLine(item string, charmap map[string][]string, regmap map[string][]int
 		}
 		n = n - len(item)
 		fmt.Print("\n")
-	}
-}
-
-func WriteToFile(file *os.File, item string, charmap map[string][]string, regmap map[string][]int, Indexlist []args.Index) {
-	for i := 0; i < 8; i++ {
-		for _, letter := range item {
-			_, err := file.WriteString(charmap[string(letter)][i])
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-		_, err := file.WriteString("\n")
-		if err != nil {
-			log.Fatal(err)
-		}
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -15,13 +16,14 @@ func main() {
 	var n int
 	var Indexlist []args.Index
 	var outfile *os.File
+	var align string
 	if len(os.Args) < 3 {
 		args.Help()
 		return
 	}
 	input := os.Args[1]
 	if len(os.Args) > 3 {
-		args.CheckArgs(os.Args[3:], regmap, &Indexlist, &outfile)
+		args.CheckArgs(os.Args[3:], regmap, &Indexlist, &outfile, &align)
 	}
 	if outfile != nil {
 		os.Stdout = outfile
@@ -45,12 +47,21 @@ func main() {
 	if len(input) < len(inputlines) {
 		inputlines = inputlines[1:]
 	}
+	tw, err := exec.Command("tput", "cols").Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	tw = tw[:len(tw)-1]
+	terminalWidth, err := strconv.Atoi(string(tw))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(align)
 	for _, item := range inputlines {
-		if outfile != nil {
-			chars.WriteToFile(outfile, item, charmap, regmap, Indexlist)
-		} else {
-			chars.PrintLine(item, charmap, regmap, Indexlist, n)
-			n += len(item)
+		if align != "" {
+			item = chars.SetAlignment(align, item, terminalWidth, charmap)
 		}
+		chars.PrintLine(item, charmap, regmap, Indexlist, n)
+		n += len(item)
 	}
 }

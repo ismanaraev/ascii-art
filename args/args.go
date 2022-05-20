@@ -17,7 +17,8 @@ var (
 	colorhsl     = regexp.MustCompile(`^--color=hsl\((\d{1,3})°{0,1},{0,1} {0,1}(\d{1,3})%{0,1},{0,1} {0,1}(\d{1,3})%{0,1}\)$`)
 	colorhex     = regexp.MustCompile(`^--color=#([0-9a-fA-F]{6})$`)
 	regdex       = regexp.MustCompile(`^\[(\d*?)(:){0,1}(\d*?)\]$`)
-	outfileregex = regexp.MustCompile(`^--output=(\w*?)$`)
+	outfileregex = regexp.MustCompile(`^--output=(.*?)$`)
+	alignregex   = regexp.MustCompile(`^--align=(left|right|center|justify)$`)
 )
 
 //display help, someday I will write better help string
@@ -85,7 +86,7 @@ func CheckNumbers(nums []int, mode string) bool {
 }
 
 //This function iterates the argument list and forms Indexlist and regmap based on arguments entered
-func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index, outfile **os.File) {
+func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index, outfile **os.File, align *string) {
 	var color []string
 	var nums []string
 	var numbers []int
@@ -125,15 +126,21 @@ func CheckArgs(args []string, regmap map[string][]int, Indexlist *[]Index, outfi
 			n := SetTarget(args[i:], numbers, regmap, Indexlist)
 			i += n
 		case outfileregex.MatchString(args[i]):
+			fmt.Println("kuku")
 			output := outfileregex.FindStringSubmatch(args[i])
 			_, err := os.Create(output[1])
 			if err != nil {
 				log.Fatal(err)
 			}
+			fmt.Println("yopta")
 			*outfile, err = os.OpenFile(output[1], os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
 				log.Fatal(err)
 			}
+
+		case alignregex.MatchString(args[i]):
+			alignstr := alignregex.FindStringSubmatch(args[i])
+			*align = alignstr[1]
 
 		default:
 			Help()
