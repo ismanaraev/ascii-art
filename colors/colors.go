@@ -7,10 +7,11 @@ import (
 	"strconv"
 )
 
+//This function recieves hex string in #ff00ff format and parses it to []int
 func HextoRGB(s string) []int {
 	var res []int
 	for i := 0; i < 5; i = i + 2 {
-		r, err := strconv.ParseInt(s[i:i+2], 16, 64)
+		r, err := strconv.ParseInt(s[i:i+2], 16, 64) //We don't have to worry about getting out of range, input is always valid because of regex
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -19,6 +20,7 @@ func HextoRGB(s string) []int {
 	return res
 }
 
+//This function converts hsl to RGB colors using mathmatical formula
 func HslToRGB(H, S, L int) (int, int, int) {
 	h := float64(H)
 	s := float64(S) / 100
@@ -29,17 +31,17 @@ func HslToRGB(H, S, L int) (int, int, int) {
 	m := l - (C / 2.0)
 	var R, G, B float64
 	switch {
-	case H1 >= 0.0 && H1 <= 1.0:
+	case H1 >= 0.0 && H1 < 1.0:
 		R, G, B = C, X, 0.0
-	case H1 >= 1.0 && H1 <= 2.0:
+	case H1 >= 1.0 && H1 < 2.0:
 		R, G, B = X, C, 0.0
-	case H1 >= 2.0 && H1 <= 3.0:
+	case H1 >= 2.0 && H1 < 3.0:
 		R, G, B = 0.0, C, X
-	case H1 >= 3.0 && H1 <= 4.0:
+	case H1 >= 3.0 && H1 < 4.0:
 		R, G, B = 0.0, X, C
-	case H1 >= 4.0 && H1 <= 5.0:
+	case H1 >= 4.0 && H1 < 5.0:
 		R, G, B = X, 0.0, C
-	case H1 >= 5.0 && H1 <= 6.0:
+	case H1 >= 5.0 && H1 < 6.0:
 		R, G, B = C, 0.0, X
 	}
 	R = math.Round((R + m) * 255)
@@ -48,7 +50,9 @@ func HslToRGB(H, S, L int) (int, int, int) {
 	return int(R), int(G), int(B)
 }
 
-func GetANSIColor(r, g, b int) string {
+//This function recieves rgb colors and processes them to string formatted as \033[38;2;r;g;bm
+func GetANSIColor(color []int) string {
+	r, g, b := color[0], color[1], color[2]
 	if r == 500 {
 		return "\033[8m"
 	}

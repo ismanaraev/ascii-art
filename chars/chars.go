@@ -3,36 +3,40 @@ package chars
 import (
 	"ascii-art/args"
 	"ascii-art/colors"
-	"crypto/sha256"
+	"errors"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"strconv"
 	"strings"
 )
 
-var Standardhash = []byte{225, 148, 241, 3, 52, 66, 97, 122, 184, 167, 142, 28, 166, 58, 32, 97, 245, 204, 7, 163, 240, 90, 194, 38, 237, 50, 235, 157, 253, 34, 166, 191}
-var Shadowhash = []byte{38, 185, 77, 11, 19, 75, 119, 233, 253, 35, 224, 54, 11, 253, 129, 116, 15, 128, 251, 127, 101, 65, 209, 216, 197, 216, 94, 115, 238, 85, 15, 115}
-var Thinkertoyhash = []byte{243, 125, 219, 114, 118, 66, 122, 15, 188, 217, 227, 105, 214, 89, 103, 10, 252, 146, 207, 178, 243, 230, 71, 217, 19, 204, 220, 6, 169, 152, 222, 67}
-var Doomhash = []byte{137, 233, 9, 242, 25, 108, 224, 145, 38, 211, 158, 152, 149, 135, 133, 123, 196, 68, 249, 150, 167, 68, 201, 77, 131, 56, 169, 157, 40, 31, 152, 24}
+//This type defines an ascii char and consists of fields Lines and Width, Lines are ascii-symbol lines from top to bottom, one line each and Width are its Width
+type Char struct {
+	Lines []string
+	Width int
+}
 
-func ReadCharFile(file string) string {
-	var checkhash []byte
+//This function checks font name specified by option and points it to the corresponding file
+func CheckFontName(file string) (string, error) {
 	switch file {
 	case "standard":
-		checkhash = Standardhash
 		file = "ascii/standard.txt"
 	case "shadow":
-		checkhash = Shadowhash
 		file = "ascii/shadow.txt"
 	case "thinkertoy":
-		checkhash = Thinkertoyhash
 		file = "ascii/thinkertoy.txt"
 	case "doom":
-		checkhash = Doomhash
 		file = "ascii/doom.txt"
 	default:
-		args.Help()
+		return "", errors.New("Invalid font name")
 	}
+	return file, nil
+}
+
+//This function Reads the file containing ascii-chars and validates it by number of lines
+func ReadCharFile(file string) (string, error) {
 	chars, err := os.Open(file)
 	if err != nil {
 		log.Fatal(err)
@@ -44,24 +48,20 @@ func ReadCharFile(file string) string {
 		log.Fatal(err)
 	}
 	res := string(data[:n])
-	hash := sha256.New()
-	hash.Write(data[:n])
-	if string(hash.Sum(nil)) != string(checkhash) {
-		fmt.Println("file is corrupted")
-		os.Exit(0)
+	filelen := strings.Split(res, "\n")
+	if len(filelen) != 856 {
+		return "", errors.New("invalid file, file must have 855 lines")
 	}
-	if file == "ascii/thinkertoy.txt" {
-		res = strings.ReplaceAll(res, "\r", "")
-	}
-	return res
+	return res, nil
 }
 
-func CreateCharMap(allchars string) map[string][]string {
+//This function Creates a string to Char map using the contents of a ascii-art char file as a single continious string
+func CreateCharMap(allchars string) map[string]Char {
 	var ct int
 	var tmp []string
 	var newcharset [][]string
 	charset := strings.Split(allchars, "\n")
-	charmap := make(map[string][]string)
+	charmap := make(map[string]Char)
 	charset = charset[1:]
 	for _, item := range charset {
 		ct++
@@ -77,13 +77,14 @@ func CreateCharMap(allchars string) map[string][]string {
 		continue
 	}
 	for i, char := range newcharset {
-		charmap[string(rune(i+32))] = char
+		charmap[string(rune(i+32))] = Char{Lines: char, Width: len(char[0])}
 	}
-	charmap["\n"] = make([]string, 8)
+	charmap["\n"] = Char{Lines: make([]string, 8), Width: 1}
 	return charmap
 }
 
-func CheckString(input string, charmap map[string][]string) bool {
+//This function Check if string has only ascii characters
+func CheckString(input string, charmap map[string]Char) bool {
 	for _, item := range input {
 		if _, ok := charmap[string(item)]; !ok {
 			return false
@@ -92,95 +93,177 @@ func CheckString(input string, charmap map[string][]string) bool {
 	return true
 }
 
-func GetStrWidth(s string, charmap map[string][]string) int {
+//This function finds the width of the all the ascii-chars of a given string
+func GetStrWidth(s string, charmap map[string]Char) int {
 	var ct int
 	for _, ch := range s {
-		ct += len(charmap[string(ch)][0])
+		ct += charmap[string(ch)].Width
 	}
 	return ct
 }
 
+//This function Counts the number of words in string
 func CountWords(s string) int {
 	f := strings.Split(s, " ")
 	return len(f)
 }
-func SetAlignment(align, item string, terminalwidth int, charmap map[string][]string) string {
-	fmt.Println("kurlyk")
+
+//this function gets the width of a current terminal, required by SetAlignment
+func GetTermWidth() int {
+	tw, err := exec.Command("tput", "cols").Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	tw = tw[:len(tw)-1]
+	terminalWidth, err := strconv.Atoi(string(tw))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return terminalWidth
+}
+
+//This function handles --alignment flag. It does it by altering the input string,
+//In the given string we replace space chars, which have width 6, with non-ascii chars added to the map with
+//the calculated width with respect to the terminal width and free space available
+func SetAlignment(align, item string, charmap map[string]Char) string {
 	n := GetStrWidth(item, charmap)
+	terminalwidth := GetTermWidth()
 	switch align {
 	case "left":
+		//Here we get the free space available to us in the current terminal
 		shift := terminalwidth - n
+		//Then, we create the string slice with required width
 		newchar := []string{}
 		for i := 0; i != 8; i++ {
 			newchar = append(newchar, strings.Repeat(" ", shift))
 		}
-		charmap["Л"] = newchar
+		//append the slice to the non-ascii char in the charmap
+		charmap["Л"] = Char{Lines: newchar, Width: shift}
+		//and add it to the string
 		item = item + "Л"
 	case "right":
+		//Same as in left
 		shift := terminalwidth - n
 		var newchar []string
 		for i := 0; i != 8; i++ {
 			newchar = append(newchar, strings.Repeat(" ", shift))
 		}
-		charmap["Р"] = newchar
+		charmap["Р"] = Char{Lines: newchar, Width: shift}
 		item = "Р" + item
 	case "center":
+		//As usual, we get the available free space, then divide it by 2 to get the size for shift
 		shift := terminalwidth - n
 		lshift := shift / 2
 		rshift := shift - lshift
+		//Then, create two string slices with required width
 		var lchar []string
 		var rchar []string
 		for i := 0; i != 8; i++ {
 			lchar = append(lchar, strings.Repeat(" ", lshift))
 			rchar = append(rchar, strings.Repeat(" ", rshift))
 		}
-		charmap["Л"] = lchar
-		charmap["Р"] = rchar
+		//add the non-ascii chars to the charmap
+		charmap["Л"] = Char{Lines: lchar, Width: lshift}
+		charmap["Р"] = Char{Lines: rchar, Width: rshift}
+		//add the non-ascii chars with required width to the string both on left and right
 		item = "Л" + item + "Р"
 	case "justify":
+		//Here we Trim the spaces on left and right, so justify will work as intended
+		item = strings.Trim(item, " ")
+		//Count Freespace
 		freespace := terminalwidth - n
+		//Count words, we need number of words to find the width of each space between them
 		words := CountWords(item)
+		//Here we add 1 to the word, so we could avoid ZeroDivisionError
 		if words == 1 {
 			words = 2
 		}
+		//Here we divide the freespace to number of spaces between words, to count the new width for each space
 		sh := freespace / (words - 1)
+		//Because the standard ascii space width is 6, we add six to the newly counted width value
 		sh += 6
+		//Again, create string slice with needed width
 		var suchar []string
 		for i := 0; i != 8; i++ {
 			suchar = append(suchar, strings.Repeat(" ", sh))
 		}
-		charmap["Щ"] = suchar
+		//Add the slice to the map
+		charmap["Щ"] = Char{Lines: suchar, Width: sh}
+		//And here we replace each space in string with the char that has required number of spaces
 		item = strings.ReplaceAll(item, " ", "Щ")
 	}
 	return item
 }
 
-func PrintLine(item string, charmap map[string][]string, regmap map[string][]int, Indexlist []args.Index, n int) {
-	fmt.Println(item)
+//This function checks if the char should be colored, if yes, then returns the slice of integers, containing rgb color
+func CheckPrintColor(s rune, Indexlist []args.Index, regmap map[string][]int, n int) []int {
+	if in, ok := args.CheckIndex(Indexlist, n); ok {
+		dexcol := in.Color
+		return dexcol
+	} else if col, ok := regmap[""]; ok {
+		return col
+	} else if col, ok := regmap[string(s)]; ok {
+		return col
+	}
+	return []int{}
+}
+
+//This function iterates over the slice of string in Char and prints them
+func PrintLine(item string, charmap map[string]Char, regmap map[string][]int, Indexlist []args.Index, n int) {
 	if item == "" {
 		fmt.Print("\n")
 		return
 	}
+	//Because each character has height equal to 8
 	for i := 0; i < 8; i++ {
 		for _, letter := range item {
-			if in, ok := args.CheckIndex(Indexlist, n); ok {
-				dexcol := in.Color
-				fmt.Print(colors.GetANSIColor(dexcol[0], dexcol[1], dexcol[2]) + charmap[string(letter)][i])
-				fmt.Print("\033[0m")
-			} else if col, ok := regmap[""]; ok {
-				if len(regmap) != 1 {
-					args.Help()
-				}
-				fmt.Print(colors.GetANSIColor(col[0], col[1], col[2]) + charmap[string(letter)][i])
-			} else if col, ok := regmap[string(letter)]; ok {
-				fmt.Print(colors.GetANSIColor(col[0], col[1], col[2]) + charmap[string(letter)][i])
-				fmt.Print("\033[0m")
+			//Check if we should color the string
+			if color := CheckPrintColor(letter, Indexlist, regmap, n); len(color) != 0 {
+				fmt.Print(colors.GetANSIColor(color) + charmap[string(letter)].Lines[i])
 			} else {
-				fmt.Print(charmap[string(letter)][i])
+				fmt.Print(charmap[string(letter)].Lines[i])
 			}
 			n++
 		}
+		//This n represents the true index of the char, given by main, here we reset it back to the value we had at the beginning of this line, because we print it line by line
 		n = n - len(item)
 		fmt.Print("\n")
 	}
+}
+
+//Here we check if input overflows the terminal and won't fir and split the string, so all the characters that won't fit will be places on next line
+func ValidateInput(inputlines []string, charmap map[string]Char) []string {
+	tw := GetTermWidth()
+	var wordlen int
+	var word string
+	var newinputlines []string
+	for _, item := range inputlines {
+		for _, ch := range item {
+			if l := wordlen + charmap[string(ch)].Width; l <= tw {
+				wordlen += charmap[string(ch)].Width
+				word += string(ch)
+			} else {
+				newinputlines = append(newinputlines, word)
+				wordlen = charmap[string(ch)].Width
+				word = string(ch)
+			}
+		}
+		wordlen = 0
+		if word != "" {
+			newinputlines = append(newinputlines, word)
+			word = ""
+		}
+	}
+	return newinputlines
+}
+
+//This function uses some dirty hack, i.e. it executes the command echo -e to interpret the backslash characters in the input
+func FormatString(s string) string {
+	formatted_str, err := exec.Command("echo", "-e", s).Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	s = string(formatted_str)
+	s = s[:len(s)-1]
+	return s
 }
